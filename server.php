@@ -1,7 +1,7 @@
 #!/usr/bin/php -q
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors','1');
+ini_set('display_errors', '1');
 // Run from command prompt > php demo.php
 require_once("lib/phpws/phpws/websocket.server.php");
 require_once("lib/jaxl/jaxl.php");
@@ -13,13 +13,17 @@ require_once("lib/jaxl/jaxl.php");
  * @author Chris
  *
  */
-class DemoEchoHandler extends WebSocketUriHandler{
-	public function onMessage(IWebSocketConnection $user, IWebSocketMessage $msg){
-
+class DemoEchoHandler extends WebSocketUriHandler
+{
+	public function onMessage(IWebSocketConnection $user, IWebSocketMessage $msg)
+	{
+		$this->say("[ECHO] {$msg->getData()}");
+		// Echo
 		$user->sendMessage($msg);
 	}
 
-	public function onAdminMessage(IWebSocketConnection $user, IWebSocketMessage $obj){
+	public function onAdminMessage(IWebSocketConnection $user, IWebSocketMessage $obj)
+	{
 		$this->say("[DEMO] Admin TEST received!");
 
 		$frame = WebSocketFrame::create(WebSocketOpcode::PongFrame);
@@ -34,56 +38,128 @@ class DemoEchoHandler extends WebSocketUriHandler{
  * @author Chris
  *
  */
-class SocketServer implements IWebSocketServerObserver{
+class DemoSocketServer implements IWebSocketServerObserver
+{
 	protected $debug = true;
 	protected $server;
-	protected $jabberClients = array();
+	protected $handler = null;
 
-	public function __construct(){
+	public function __construct()
+	{
 		$this->server = new WebSocketServer('tcp://0.0.0.0:12345', 'superdupersecretkey');
 		$this->server->addObserver($this);
+
 		$this->server->addUriHandler("echo", new DemoEchoHandler());
 	}
 
-	public function onConnect(IWebSocketConnection $user){
+	public function onConnect(IWebSocketConnection $user)
+	{
+		$this->say("[DEMO] {$user->getId()} connected");
+
+		$this->auth($user);
+
+		/*$client->add_cb('on_chat_message', function ($stanza) use ($client) {
+			// echo back incoming message stanza
+			$stanza->to = $stanza->from;
+			$stanza->from = $client->jid->to_string();
+			var_dump($stanza);
+			$client->send($stanza);
+		});
+
+		$client->add_cb('on_disconnect', function () use ($client, $user) {
+			_info("got on_disconnect cb");
+			$this->say("[DEMO] {$user->getId()} disconnected");
+			$user->sendString("Disconected");
+		});*/
+	}
+
+	protected function auth(IWebSocketConnection $user)
+	{
+		$client = $this->getClient();
+
+		$client->add_cb('on_auth_success', function () use ($client, $user) {
+			$client->send_end_stream();
+			$user->sendString("Connected");
+			_info("got on_auth_success cb, jid " . $client->full_jid->to_string());
+			$this->listen($user);
+		});
+
+		$client->add_cb('on_auth_failure', function ($reason) use ($client, $user) {
+			$client->send_end_stream();
+			$user->sendString("got on_auth_failure cb with reason $reason");
+		});
+
+		$client->start();
+	}
+
+	protected function listen(IWebSocketConnection $user)
+	{
+		$client = $this->getClient();
+
+		$client->add_cb('on_chat_message', function ($stanza) use ($client, $user) {
+			// echo back incoming message stanza
+			$user->sendString("From jabber:" . $stanza->body);
+		});
+
+		$client->start();
+	}
+
+	protected function getClient()
+	{
 		$client = new JAXL(array(
-			// (required) credentials
-			'jid' => 'bazilio@handshake.bazilio',
+			'jid' => 'bazilio2@localhost',
 			'pass' => '31415',
-			'host' => 'handshake.bazilio',
-			'port' => 5222,
 			'log_level' => JAXL_DEBUG,
 		));
-		$client->connect($client->get_socket_path());
-		$client->start_stream();
-		$this->jabberClients[$user->getId()] = $client;
-		$this->say("[DEMO] {$user->getId()} connected");
+
+		$client->require_xep(array(
+			'0199'
+		));
+
+		return $client;
 	}
 
-	public function onMessage(IWebSocketConnection $user, IWebSocketMessage $msg){
-		$this->jabberClients[$user->getId()]->send_chat_msg('bazilio2@handshake.bazilio', 'Hello World!');
+	public function onMessage(IWebSocketConnection $user, IWebSocketMessage $msg)
+	{
+		// TODO: perform a message queue and bind on JAXL Clock
+		return true;
+		$this->say("[DEMO] {$user->getId()} says '{$msg->getData()}'");
+		$client = $this->getClient();
+
+		$client->add_cb('on_auth_success', function () use ($client, $user, $msg) {
+			$client->send_chat_msg('bazilio@localhost', $msg->getData());
+			$client->send_chat_msg('bazilio2@localhost', $msg->getData());
+			$client->send_end_stream();
+			$this->say("[DEMO] sent");
+		});
+
+		$client->start();
 	}
 
-	public function onDisconnect(IWebSocketConnection $user){
+	public function onDisconnect(IWebSocketConnection $user)
+	{
 		$this->say("[DEMO] {$user->getId()} disconnected");
 	}
 
-	public function onAdminMessage(IWebSocketConnection $user, IWebSocketMessage $msg){
+	public function onAdminMessage(IWebSocketConnection $user, IWebSocketMessage $msg)
+	{
 		$this->say("[DEMO] Admin Message received!");
 
 		$frame = WebSocketFrame::create(WebSocketOpcode::PongFrame);
 		$user->sendFrame($frame);
 	}
 
-	public function say($msg){
+	public function say($msg)
+	{
 		echo "$msg \r\n";
 	}
 
-	public function run(){
+	public function run()
+	{
 		$this->server->run();
 	}
 }
 
 // Start server
-$server = new SocketServer();
+$server = new DemoSocketServer();
 $server->run();
