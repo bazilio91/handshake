@@ -1,0 +1,6 @@
+[submodule "lib/phpws"]
+	path = lib/phpws
+	url = git://github.com/Devristo/phpws.git
+[submodule "lib/jaxl"]
+	path = lib/jaxl
+	url = git://github.com/abhinavsingh/JAXL.git
