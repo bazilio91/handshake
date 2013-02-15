@@ -7,65 +7,105 @@
 
 
 var app = {
-	socket:{
+	transport:{
 		connection:null,
 		connected:false,
 		queue:[],
 
-		onError:function (e) {
-		},
-		onOpen:function (e) {
+		onConnect:function (status) {
 			var self = this;
-			self.connected = true;
-			while (self.queue.length > 0 && self.connected) {
-				var data = self.queue.pop();
-				self.send(data);
+			switch (status) {
+				case Strophe.Status.CONNECTING:
+					app.transport.onOpen();
+					break;
+				case Strophe.Status.CONNFAIL:
+					app.transport.onFail();
+					break;
+				case Strophe.Status.DISCONNECTING:
+					app.transport.onDisconnecting();
+					break;
+
+				case Strophe.Status.DISCONNECTED:
+					app.transport.onDisconnected();
+					break;
+
+				case Strophe.Status.CONNECTED:
+					app.transport.onConnected();
+					break;
+
 			}
 		},
-		onClose:function (e) {
+		onOpen:function () {
+			console.log('Connecting.');
+		},
+		onConnected:function () {
+			var self = this;
+			console.log('Connected.');
+			self.connected = true;
+			self.connection.addHandler(self.onMessage, null, 'message', null, null, null);
+			self.connection.send($pres().tree());
+
+			while (self.queue.length > 0 && self.connected) {
+				var data = self.queue.pop();
+				app.send(data.msg, data.to);
+			}
+
+		},
+		onFail:function () {
+			console.log('Failed to connect.');
+		},
+		onDisconnecting:function () {
+			console.log('Disconnecting.');
+		},
+		onDisconnected:function () {
 			var self = this;
 			self.connected = false;
 		},
-		onMessage:function (e) {
-			console.log('Recieved: ', e.data)
+		onMessage:function (msg) {
+			var to = msg.getAttribute('to');
+			var from = msg.getAttribute('from');
+			var type = msg.getAttribute('type');
+			var elems = msg.getElementsByTagName('body');
+
+			if (type == "chat" && elems.length > 0) {
+				var body = elems[0];
+				var text = Strophe.getText(body);
+				console.log('Recieved from ' + from + ': ' + text);
+				$('body').append("<p><b>" + from + "</b>: " + text + "</p>");
+			}
+
+			// we must return true to keep the handler alive.
+			// returning false would remove it after it finishes.
+			return true;
 		},
 
-		connect:function (uri) {
+		connect:function (uri, user, password) {
 			var self = this;
-			console.log(self);
-			self.connection = new WebSocket(uri);
-			self.connection.onopen = function (e) {
-				self.onOpen(e)
-			};
-			self.connection.onclose = function (e) {
-				self.onClose(e)
-			};
-			self.connection.onmessage = function (e) {
-				self.onMessage(e)
-			};
-			self.connection.onerror = function (e) {
-				self.onError(e)
-			};
+			self.connection = new Strophe.Connection(uri);
+
+			self.connection.connect(user, password, app.transport.onConnect);
 		},
 
-		send:function (data) {
+		send:function (msg, to) {
 			var self = this;
 			if (self.connected) {
-				console.log('Truelly send', data);
-				self.connection.send(data);
+				var message = $msg({to:to, from:self.connection.jid, type:'chat'}).c("body").t(msg);
+				self.connection.send(message.tree());
+
+				$('body').append("<p><b>Вы:</b>: " + msg + "</p>");
+				console.log('TRANSPORT: Send to ' + to + ' : ' + msg);
 			} else {
-				self.queue.push(data);
+				self.queue.push({msg:msg, to:to});
 			}
 		}
 	},
 	init:function () {
 
 	},
-	send:function (data) {
+	send:function (msg, to) {
 		var self = this;
 
-		console.log('Sending: ', data);
-		self.socket.send(data);
+		self.transport.send(msg, to);
 
 	}
 };
