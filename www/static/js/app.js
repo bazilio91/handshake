@@ -78,6 +78,26 @@ var app = {
 			// returning false would remove it after it finishes.
 			return true;
 		},
+		/**
+		 * http://stackoverflow.com/questions/12062950/handling-presence-in-strophe-js-based-chat-application
+		 * @param presence
+		 */
+		onPresence:function (presence) {
+			var presence_type = $(presence).attr('type'); // unavailable, subscribed, etc...
+			var from = $(presence).attr('from'); // the jabber_id of the contact
+			if (presence_type != 'error') {
+				if (presence_type === 'unavailable') {
+					// Mark contact as offline
+				} else {
+					var show = $(presence).find("show").text(); // this is what gives away, dnd, etc.
+					if (show === 'chat' || show === '') {
+						// Mark contact as online
+					} else {
+						// etc...
+					}
+				}
+			}
+		},
 
 		connect:function (uri, user, password) {
 			var self = this;
