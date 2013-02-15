@@ -5,6 +5,7 @@
 	<script src="static/js/jquery-1.9.1.min.js"></script>
 	<script type="text/javascript" charset="utf-8" src="static/js/app.js"></script>
 	<script type='text/javascript' src='/static/js/strophe.js'></script>
+	<script type='text/javascript' src='/static/js/strophe.archive.js'></script>
 </head>
 <body>
 
@@ -14,6 +15,7 @@
 		app.transport.connect(uri, 'admin@localhost', 'admin');
 		$('form').submit(function () {
 			app.send($('#msg').val(), $('#to').val());
+
 			return false;
 		});
 	})

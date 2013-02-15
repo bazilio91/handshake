@@ -84,7 +84,8 @@
 			 %% captcha,
 			 http_bind,
 			 http_poll,
-			 web_admin
+			 web_admin,
+			 request_handlers, [{["archive"],mod_archive_webview}]}
 			]}
 
  ]}.
