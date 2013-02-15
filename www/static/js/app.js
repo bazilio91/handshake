@@ -117,12 +117,8 @@ var app = {
 			} else {
 				self.queue.push({msg:msg, to:to});
 			}
-		},
-		getHistory:function (jid) {
-			app.transport.connection.archive.listCollections('bazilio@localhost', null, function (e, r) {
-				console.log(e, r);
-			});
 		}
+
 	},
 	init:function () {
 
@@ -132,5 +128,10 @@ var app = {
 
 		self.transport.send(msg, to);
 
+	},
+	getHistory:function (jid) {
+		app.transport.connection.archive.listCollections('bazilio@localhost', null, function (e, r) {
+			console.log(e, r);
+		});
 	}
 };

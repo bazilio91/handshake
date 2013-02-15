@@ -15,7 +15,7 @@
 		app.transport.connect(uri, 'admin@localhost', 'admin');
 		$('form').submit(function () {
 			app.send($('#msg').val(), $('#to').val());
-
+			app.getHistory($('#to').val());
 			return false;
 		});
 	})
