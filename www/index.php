@@ -11,7 +11,7 @@
 <script>
 	$(function () {
 		var uri = 'http://localhost:5280/http-bind/';
-		app.transport.connect(uri, 'bazilio2@localhost', '31415');
+		app.transport.connect(uri, 'admin@localhost', 'admin');
 		$('form').submit(function () {
 			app.send($('#msg').val(), $('#to').val());
 			return false;
