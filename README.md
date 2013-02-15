@@ -1,1 +1,1 @@
-Performs WebSocket -> php JAXL -> ejabberd connection
+Performs JS -> ejabberd chat with custom auth
